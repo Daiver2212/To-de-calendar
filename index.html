@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ToDo</title>
+  <title><To-do-calendar></To-do-calendar></title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-  <!-- Часы -->
+  <!-- ===== ЧАСЫ (ВСЕГДА ВИДНЫ) ===== -->
   <section class="date_time">
     <h1 class="current_time">
       <span class="HH">00</span><span class="Blink">:</span><span class="MM">00</span>
@@ -16,21 +16,32 @@
     <span class="date">—</span>
   </section>
 
-  <!-- Панель добавления задачи (ВСЕГДА ВИДНА) -->
-  <section class="new_task">
-    <input id="taskName" type="text" placeholder="Название задачи" autocomplete="off" />
-    <div class="row">
-      <input id="taskDate" type="date" />
-      <input id="taskTime" type="time" />
-    </div>
+  <!-- ===== РЕГИСТРАЦИЯ (ПОД ЧАСАМИ) ===== -->
+  <section class="register" id="registerSection">
+    <h2 class="register__title">Регистрация</h2>
+    <input id="regEmail" type="email" placeholder="Почта (email)" autocomplete="email" />
+    <button class="register__btn" id="registerBtn" type="button">Зарегистрироваться</button>
+    <p class="register__status" id="registerStatus"></p>
   </section>
 
-  <!-- Список задач -->
-  <main class="task_list"></main>
+  <!-- ===== TODO (СКРЫТО ДО РЕГИСТРАЦИИ) ===== -->
+  <section id="appSection" class="app hidden">
 
-  <!-- Кнопка добавить -->
-  <button class="add_task" type="button" aria-label="Добавить задачу">+</button>
+    <section class="new_task">
+      <input id="taskName" type="text" placeholder="Название задачи" autocomplete="off" />
+      <div class="row">
+        <input id="taskDate" type="date" />
+        <input id="taskTime" type="time" />
+      </div>
+    </section>
 
+    <main class="task_list"></main>
+
+    <button class="add_task" type="button" aria-label="Добавить задачу">+</button>
+  </section>
+
+  <!-- EmailJS -->
+  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
   <script src="scrept.js"></script>
 </body>
 </html>
