@@ -1,0 +1,204 @@
+/* ===== iPhone safe areas + базовые мобильные правки ===== */
+@supports (padding: max(0px)) {
+  body{
+    /* чтобы контент не залезал под "чёлку" и края */
+    padding-top: max(18px, env(safe-area-inset-top));
+    padding-left: max(18px, env(safe-area-inset-left));
+    padding-right: max(18px, env(safe-area-inset-right));
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+  }
+
+  .add_task{
+    /* чтобы кнопка не упиралась в нижнюю "полосу" */
+    bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .task_list{
+    /* чтобы список не прятался за кнопкой + и нижней зоной */
+    padding-bottom: calc(160px + env(safe-area-inset-bottom));
+  }
+}
+
+/* ===== Мобильные размеры (телефоны) ===== */
+@media (max-width: 430px){
+  body{
+    padding: 14px;
+  }
+
+  .current_time{
+    font-size: 64px;
+  }
+
+  .new_task{
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .new_task input{
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 16px; /* важно: iOS не будет зумить инпут при фокусе */
+  }
+
+  .new_task .row{
+    grid-template-columns: 1fr; /* дата и время в столбик */
+  }
+
+  .task__name{
+    font-size: 16px;
+  }
+
+  .add_task{
+    width: 68px;
+    height: 68px;
+    font-size: 38px;
+  }
+}
+
+/* ===== iPhone landscape: чтобы всё не теснилось ===== */
+@media (max-width: 932px) and (orientation: landscape){
+  .current_time{
+    font-size: 54px;
+  }
+  .task_list{
+    padding-bottom: 120px;
+  }
+}
+
+:root{
+  --white: #fafafa;
+  --black: #202024;
+  --accent: #ffcc00e4;
+
+  --warning: #ff4410;
+  --success: #10FF20;
+  --inprocess: #4935fc;
+}
+
+*{ box-sizing: border-box; }
+
+body{
+  margin: 0;
+  padding: 18px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  color: var(--white);
+  background: var(--black);
+  overflow-x: hidden;
+}
+
+/* ===== ЧАСЫ ===== */
+.date_time{
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.current_time{
+  font-size: 84px;
+  margin: 0;
+  line-height: 1;
+}
+
+.current_time .hidden{
+  visibility: hidden;
+}
+
+.date{
+  opacity: 0.85;
+  font-size: 16px;
+}
+
+/* ===== ПАНЕЛЬ ДОБАВЛЕНИЯ ===== */
+.new_task{
+  margin: 18px auto;
+  max-width: 560px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.12);
+  padding: 14px;
+  border-radius: 16px;
+}
+
+.new_task input{
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(0,0,0,0.25);
+  color: var(--white);
+  outline: none;
+}
+
+.new_task .row{
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* ===== СПИСОК ===== */
+.task_list{
+  max-width: 560px;
+  margin: 0 auto;
+  padding-bottom: 140px; /* чтобы кнопка не перекрывала список */
+}
+
+.task{
+  width: 100%;
+  border-top: 2px solid rgba(255,255,255,0.6);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 4px;
+}
+
+.task:last-child{
+  border-bottom: 2px solid rgba(255,255,255,0.6);
+}
+
+.checkbox{
+  border: 1px solid var(--white);
+  border-radius: 999px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  user-select: none;
+  flex: 0 0 auto;
+}
+
+.content{
+  flex: 1 1 auto;
+}
+
+.task__name{
+  margin: 0;
+  margin-bottom: 6px;
+  font-size: 18px;
+}
+
+.condition{
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  opacity: 0.95;
+}
+
+.inprocess{ background: var(--inprocess); }
+.warning{ background: var(--warning); }
+.success{ background: var(--success); }
+
+/* ===== КНОПКА + ===== */
+.add_task{
+  width: 78px;
+  height: 78px;
+  border-radius: 999px;
+  border: none;
+  background: var(--accent);
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  font-size: 42px;
+  cursor: pointer;
+}
