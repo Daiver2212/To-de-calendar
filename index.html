@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title><To-do-calendar></To-do-calendar></title>
+  <title>To-do-calendar</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -26,11 +26,11 @@
 
   <!-- ===== TODO (СКРЫТО ДО РЕГИСТРАЦИИ) ===== -->
   <section id="appSection" class="app hidden">
-
     <section class="new_task">
       <input id="taskName" type="text" placeholder="Название задачи" autocomplete="off" />
       <div class="row">
-        <input id="taskDate" type="date" />
+        <!-- ДАТА БЕЗ ГОДА -->
+        <input id="taskDate" type="text" placeholder="ДД.ММ" inputmode="numeric" />
         <input id="taskTime" type="time" />
       </div>
     </section>
@@ -40,8 +40,10 @@
     <button class="add_task" type="button" aria-label="Добавить задачу">+</button>
   </section>
 
-  <!-- EmailJS -->
-  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
+  <button id="clearAllTasks" class="clear-btn" type="button">
+    🗑 Очистить все задачи
+  </button>
+
   <script src="scrept.js"></script>
 </body>
 </html>
