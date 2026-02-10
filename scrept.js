@@ -16,15 +16,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function tick() {
       const now = new Date();
-
       if (hhEl) hhEl.textContent = String(now.getHours()).padStart(2, "0");
       if (mmEl) mmEl.textContent = String(now.getMinutes()).padStart(2, "0");
-
       if (dateEl) {
         dateEl.textContent =
           `${weekdays[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
       }
-
       setTimeout(tick, 1000 - now.getMilliseconds());
     }
 
@@ -91,13 +88,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
   });
 
-  /* ===== ЗАГРУЗКА ЗАДАЧ ===== */
+  /* ===== ЗАДАЧИ ИЗ ПАМЯТИ ===== */
   let tasks = loadTasks();
   renderAll();
 
-  /* ===== ВВОД ДАТЫ: ДДММ -> ДД.ММ (железно, без двойных точек) ===== */
+  /* ===== ВВОД ДАТЫ: ДДММ -> ДД.ММ (без двойных точек) ===== */
   taskDate.addEventListener("input", () => {
-    let digits = (taskDate.value || "").replace(/\D/g, ""); // только цифры
+    let digits = (taskDate.value || "").replace(/\D/g, "");
     if (digits.length > 4) digits = digits.slice(0, 4);
 
     if (digits.length <= 2) {
@@ -112,8 +109,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const name = (taskName.value || "").trim();
     if (!name) return;
 
-    const date = normalizeDateNoYear(taskDate.value); // вернёт "ДД.ММ" или ""
-    const time = (taskTime.value || "").trim();
+    const date = normalizeDateNoYear(taskDate.value);
+    const time = normalizeTime(taskTime.value);
+
+    // если дата введена, но неверная — ошибка
+    if (taskDate.value.trim() && !date) {
+      alert("Неверная дата. Формат: ДД.ММ (например 12.03)");
+      return;
+    }
+
+    // если время введено, но неверное — ошибка
+    if (taskTime.value.trim() && !time) {
+      alert("Неверное время. Формат: ЧЧ:ММ (например 14:30)");
+      return;
+    }
 
     const task = {
       id: Date.now().toString(),
@@ -185,21 +194,42 @@ document.addEventListener("DOMContentLoaded", () => {
     list.innerHTML = "";
   });
 
-  /* ===== НОРМАЛИЗАЦИЯ ДАТЫ (принимает 12.3 / 1203 / 12/03 и т.д.) ===== */
+  /* ===== ОГРАНИЧЕНИЕ ДАТЫ (учёт дней в месяце) ===== */
   function normalizeDateNoYear(str) {
     const digits = (str || "").replace(/\D/g, "");
-    if (!digits) return "";
-
-    // нужно ровно 4 цифры: ДДММ
     if (digits.length < 4) return "";
 
-    const d = Number(digits.slice(0, 2));
-    const m = Number(digits.slice(2, 4));
+    const day = Number(digits.slice(0, 2));
+    const month = Number(digits.slice(2, 4));
 
-    if (!Number.isFinite(d) || !Number.isFinite(m)) return "";
-    if (d < 1 || d > 31 || m < 1 || m > 12) return "";
+    if (!Number.isFinite(day) || !Number.isFinite(month)) return "";
+    if (month < 1 || month > 12) return "";
+    if (day < 1) return "";
 
-    return String(d).padStart(2, "0") + "." + String(m).padStart(2, "0");
+    // сколько дней в месяце (учёт високосного года)
+    const year = new Date().getFullYear();
+    const daysInMonth = new Date(year, month, 0).getDate(); // month: 1..12
+    if (day > daysInMonth) return "";
+
+    return String(day).padStart(2, "0") + "." + String(month).padStart(2, "0");
+  }
+
+  /* ===== ОГРАНИЧЕНИЕ ВРЕМЕНИ (00:00 - 23:59) ===== */
+  function normalizeTime(str) {
+    const s = (str || "").trim();
+    if (!s) return "";
+
+    const m = s.match(/^(\d{2}):(\d{2})$/);
+    if (!m) return "";
+
+    const hh = Number(m[1]);
+    const mm = Number(m[2]);
+
+    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return "";
+    if (hh < 0 || hh > 23) return "";
+    if (mm < 0 || mm > 59) return "";
+
+    return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
   }
 
   /* ===== localStorage ===== */
