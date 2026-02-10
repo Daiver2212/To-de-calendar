@@ -84,29 +84,35 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   modalCloseBtn.addEventListener("click", closeModal);
-  modal.addEventListener("click", e => {
-    if (e.target.dataset.close === "1") closeModal();
+  modal.addEventListener("click", (e) => {
+    if (e.target && e.target.dataset && e.target.dataset.close === "1") closeModal();
   });
-  document.addEventListener("keydown", e => {
-    if (e.key === "Escape") closeModal();
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
   });
 
+  /* ===== ЗАГРУЗКА ЗАДАЧ ===== */
   let tasks = loadTasks();
   renderAll();
 
-  /* автоточка в дате */
+  /* ===== ВВОД ДАТЫ: ДДММ -> ДД.ММ (железно, без двойных точек) ===== */
   taskDate.addEventListener("input", () => {
-    let v = taskDate.value.replace(/[^\d.]/g, "");
-    if (v.length === 2 && !v.includes(".")) v += ".";
-    if (v.length > 5) v = v.slice(0, 5);
-    taskDate.value = v;
+    let digits = (taskDate.value || "").replace(/\D/g, ""); // только цифры
+    if (digits.length > 4) digits = digits.slice(0, 4);
+
+    if (digits.length <= 2) {
+      taskDate.value = digits;
+    } else {
+      taskDate.value = digits.slice(0, 2) + "." + digits.slice(2);
+    }
   });
 
+  /* ===== ДОБАВИТЬ ЗАДАЧУ ===== */
   addBtn.addEventListener("click", () => {
-    const name = taskName.value.trim();
+    const name = (taskName.value || "").trim();
     if (!name) return;
 
-    const date = normalizeDateNoYear(taskDate.value);
+    const date = normalizeDateNoYear(taskDate.value); // вернёт "ДД.ММ" или ""
     const time = (taskTime.value || "").trim();
 
     const task = {
@@ -118,6 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     tasks.push(task);
     saveTasks(tasks);
+
     list.appendChild(createTask(task));
 
     taskName.value = "";
@@ -129,23 +136,32 @@ document.addEventListener("DOMContentLoaded", () => {
   function createTask(task) {
     const el = document.createElement("div");
     el.className = "task";
+    el.dataset.id = task.id;
 
     const when = `${task.date} ${task.time}`.trim();
 
     el.innerHTML = `
-      <div class="checkbox"></div>
+      <div class="checkbox" data-checked="false"></div>
       <div class="content">
         <h2 class="task__name">${escapeHtml(task.name)}</h2>
         <span class="condition inprocess">${escapeHtml(when)}</span>
       </div>
     `;
 
+    // клик по задаче -> модалка
     el.querySelector(".content").addEventListener("click", () => openModal(task));
 
-    el.querySelector(".checkbox").addEventListener("click", () => {
+    // клик по кружочку -> удалить
+    const checkbox = el.querySelector(".checkbox");
+    checkbox.addEventListener("click", () => {
+      if (checkbox.dataset.checked === "true") return;
+      checkbox.dataset.checked = "true";
+      checkbox.textContent = "✓";
+
       tasks = tasks.filter(t => t.id !== task.id);
       saveTasks(tasks);
-      el.remove();
+
+      setTimeout(() => el.remove(), 350);
     });
 
     return el;
@@ -156,6 +172,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tasks.forEach(t => list.appendChild(createTask(t)));
   }
 
+  /* ===== УДАЛИТЬ ВСЕ ===== */
   clearBtn.addEventListener("click", () => {
     if (!tasks.length) {
       alert("Задач нет 🙂");
@@ -168,25 +185,29 @@ document.addEventListener("DOMContentLoaded", () => {
     list.innerHTML = "";
   });
 
-  /* ===== НОРМАЛИЗАЦИЯ ДАТЫ (ИСПРАВЛЕНО) ===== */
+  /* ===== НОРМАЛИЗАЦИЯ ДАТЫ (принимает 12.3 / 1203 / 12/03 и т.д.) ===== */
   function normalizeDateNoYear(str) {
-    const s = (str || "").trim();
-    if (!s) return "";
+    const digits = (str || "").replace(/\D/g, "");
+    if (!digits) return "";
 
-    const m = s.match(/^(\d{1,2})\.(\d{1,2})$/);
-    if (!m) return "";
+    // нужно ровно 4 цифры: ДДММ
+    if (digits.length < 4) return "";
 
-    const d = Number(m[1]);
-    const mo = Number(m[2]);
-    if (d < 1 || d > 31 || mo < 1 || mo > 12) return "";
+    const d = Number(digits.slice(0, 2));
+    const m = Number(digits.slice(2, 4));
 
-    return String(d).padStart(2, "0") + "." + String(mo).padStart(2, "0");
+    if (!Number.isFinite(d) || !Number.isFinite(m)) return "";
+    if (d < 1 || d > 31 || m < 1 || m > 12) return "";
+
+    return String(d).padStart(2, "0") + "." + String(m).padStart(2, "0");
   }
 
   /* ===== localStorage ===== */
   function loadTasks() {
     try {
-      return JSON.parse(localStorage.getItem("tasks")) || [];
+      const raw = localStorage.getItem("tasks");
+      const arr = raw ? JSON.parse(raw) : [];
+      return Array.isArray(arr) ? arr : [];
     } catch {
       return [];
     }
@@ -196,11 +217,14 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("tasks", JSON.stringify(arr));
   }
 
+  /* ===== защита ===== */
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
   }
 
 });
