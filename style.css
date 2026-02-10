@@ -18,6 +18,10 @@
 
 html, body{ height: 100%; }
 
+html{
+  -webkit-text-size-adjust: 100%;
+}
+
 body{
   margin: 0;
   padding: 18px;
@@ -29,6 +33,7 @@ body{
 
 .hidden{ display: none !important; }
 
+/* ===== БАЗОВЫЕ ЭЛЕМЕНТЫ ===== */
 input, button{ font: inherit; }
 
 input{
@@ -40,11 +45,19 @@ input{
   color: var(--white);
   outline: none;
   font-size: 16px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input:focus{
+  border-color: rgba(255, 204, 0, 0.55);
+  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.12);
 }
 
 button{
   cursor: pointer;
   border: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* ===== ЧАСЫ ===== */
@@ -103,6 +116,7 @@ button{
   background: var(--accent);
   color: #111;
   font-weight: 700;
+  min-height: 44px;
 }
 
 .register__status{
@@ -128,8 +142,8 @@ button{
   margin-top: 12px;
 }
 
-/* подсказка для ДД.ММ */
-#taskDate::placeholder{
+#taskDate::placeholder,
+#taskTime::placeholder{
   color: rgba(255,255,255,0.45);
 }
 
@@ -154,8 +168,8 @@ button{
 }
 
 .checkbox{
-  width: 26px;
-  height: 26px;
+  width: 28px;
+  height: 28px;
   border: 1px solid var(--white);
   border-radius: 999px;
   display: grid;
@@ -167,6 +181,7 @@ button{
 .content{
   flex: 1 1 auto;
   min-width: 0;
+  cursor: pointer; /* чтобы было ясно, что кликабельно */
 }
 
 .task__name{
@@ -199,11 +214,12 @@ button{
   bottom: 24px;
   transform: translateX(-50%);
   font-size: 42px;
+  line-height: 1;
   color: #111;
   box-shadow: 0 10px 30px rgba(0,0,0,0.35);
 }
 
-/* ===== iPhone safe-area + мобилки ===== */
+/* ===== safe-area + мобилки ===== */
 @supports (padding: max(0px)) {
   body{
     padding-top: max(18px, env(safe-area-inset-top));
@@ -228,11 +244,6 @@ button{
   .add_task{ width: 68px; height: 68px; font-size: 38px; }
 }
 
-@media (max-width: 932px) and (orientation: landscape){
-  .current_time{ font-size: 54px; }
-  .task_list{ padding-bottom: 140px; }
-}
-
 /* ===== КНОПКА "ОЧИСТИТЬ" ===== */
 .clear-btn{
   display: block;
@@ -246,6 +257,8 @@ button{
   font-weight: 500;
   cursor: pointer;
   transition: background 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  max-width: 560px;
+  width: calc(100% - 28px);
 }
 
 .clear-btn:hover{
@@ -255,4 +268,51 @@ button{
 
 .clear-btn:active{
   transform: scale(0.97);
+}
+
+/* ===== MODAL ===== */
+.modal{
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.modal__overlay{
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+}
+
+.modal__card{
+  position: relative;
+  margin: 14vh auto 0;
+  max-width: 560px;
+  width: calc(100% - 28px);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 18px;
+  padding: 16px;
+  backdrop-filter: blur(8px);
+}
+
+.modal__title{
+  margin: 0 0 12px 0;
+  font-size: 18px;
+}
+
+.modal__info{
+  display: grid;
+  gap: 8px;
+  font-size: 14px;
+  opacity: 0.95;
+}
+
+.modal__btn{
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #111;
+  font-weight: 700;
 }

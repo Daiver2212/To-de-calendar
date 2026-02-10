@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  // ===== ЧАСЫ =====
+  /* ===== ЧАСЫ ===== */
   startClock();
 
   function startClock() {
@@ -31,15 +31,14 @@ document.addEventListener("DOMContentLoaded", () => {
     tick();
   }
 
-  // ===== РЕГИСТРАЦИЯ =====
+  /* ===== РЕГИСТРАЦИЯ (localStorage) ===== */
   const registerSection = document.getElementById("registerSection");
   const appSection = document.getElementById("appSection");
   const regEmail = document.getElementById("regEmail");
   const registerBtn = document.getElementById("registerBtn");
   const registerStatus = document.getElementById("registerStatus");
 
-  const savedEmail = localStorage.getItem("registeredEmail");
-  if (savedEmail) {
+  if (localStorage.getItem("registeredEmail")) {
     registerSection.classList.add("hidden");
     appSection.classList.remove("hidden");
   }
@@ -48,38 +47,63 @@ document.addEventListener("DOMContentLoaded", () => {
     const email = (regEmail.value || "").trim();
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      if (registerStatus) registerStatus.textContent = "Введи корректный email";
+      registerStatus.textContent = "Введи корректный email";
       return;
     }
 
     localStorage.setItem("registeredEmail", email);
-
-    if (registerStatus) registerStatus.textContent = "Готово ✅";
+    registerStatus.textContent = "Готово ✅";
     registerSection.classList.add("hidden");
     appSection.classList.remove("hidden");
   });
 
-  // ===== TODO + localStorage =====
+  /* ===== TODO ===== */
   const addBtn = document.querySelector(".add_task");
   const list = document.querySelector(".task_list");
   const taskName = document.getElementById("taskName");
-  const taskDate = document.getElementById("taskDate"); // ДД.ММ
+  const taskDate = document.getElementById("taskDate");
   const taskTime = document.getElementById("taskTime");
   const clearBtn = document.getElementById("clearAllTasks");
+
+  /* ===== MODAL ===== */
+  const modal = document.getElementById("taskModal");
+  const modalName = document.getElementById("modalName");
+  const modalDate = document.getElementById("modalDate");
+  const modalTime = document.getElementById("modalTime");
+  const modalCloseBtn = document.getElementById("modalCloseBtn");
+
+  function openModal(task) {
+    modalName.textContent = task.name || "—";
+    modalDate.textContent = task.date || "—";
+    modalTime.textContent = task.time || "—";
+    modal.classList.remove("hidden");
+  }
+
+  function closeModal() {
+    modal.classList.add("hidden");
+  }
+
+  modalCloseBtn.addEventListener("click", closeModal);
+  modal.addEventListener("click", e => {
+    if (e.target.dataset.close === "1") closeModal();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") closeModal();
+  });
 
   let tasks = loadTasks();
   renderAll();
 
-  // автоподстановка точки: "12" -> "12."
+  /* автоточка в дате */
   taskDate.addEventListener("input", () => {
     let v = taskDate.value.replace(/[^\d.]/g, "");
-    if (v.length === 2 && !v.includes(".")) v = v + ".";
+    if (v.length === 2 && !v.includes(".")) v += ".";
     if (v.length > 5) v = v.slice(0, 5);
     taskDate.value = v;
   });
 
   addBtn.addEventListener("click", () => {
-    const name = (taskName.value || "").trim();
+    const name = taskName.value.trim();
     if (!name) return;
 
     const date = normalizeDateNoYear(taskDate.value);
@@ -88,14 +112,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const task = {
       id: Date.now().toString(),
       name,
-      date, // "ДД.ММ" или ""
-      time  // "HH:MM" или ""
+      date,
+      time
     };
 
     tasks.push(task);
     saveTasks(tasks);
-
-    list.appendChild(createTaskElement(task));
+    list.appendChild(createTask(task));
 
     taskName.value = "";
     taskDate.value = "";
@@ -103,31 +126,26 @@ document.addEventListener("DOMContentLoaded", () => {
     taskName.focus();
   });
 
-  function createTaskElement(task) {
+  function createTask(task) {
     const el = document.createElement("div");
     el.className = "task";
-    el.dataset.id = task.id;
 
-    const whenText = `${task.date} ${task.time}`.trim();
+    const when = `${task.date} ${task.time}`.trim();
 
     el.innerHTML = `
-      <div class="checkbox" data-checked="false"></div>
+      <div class="checkbox"></div>
       <div class="content">
         <h2 class="task__name">${escapeHtml(task.name)}</h2>
-        <span class="condition inprocess">${escapeHtml(whenText)}</span>
+        <span class="condition inprocess">${escapeHtml(when)}</span>
       </div>
     `;
 
-    const checkbox = el.querySelector(".checkbox");
-    checkbox.addEventListener("click", () => {
-      if (checkbox.dataset.checked === "true") return;
-      checkbox.dataset.checked = "true";
-      checkbox.textContent = "✓";
+    el.querySelector(".content").addEventListener("click", () => openModal(task));
 
+    el.querySelector(".checkbox").addEventListener("click", () => {
       tasks = tasks.filter(t => t.id !== task.id);
       saveTasks(tasks);
-
-      setTimeout(() => el.remove(), 500);
+      el.remove();
     });
 
     return el;
@@ -135,23 +153,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function renderAll() {
     list.innerHTML = "";
-    tasks.forEach(t => list.appendChild(createTaskElement(t)));
+    tasks.forEach(t => list.appendChild(createTask(t)));
   }
 
-  // ===== КНОПКА "УДАЛИТЬ ВСЕ" =====
   clearBtn.addEventListener("click", () => {
     if (!tasks.length) {
       alert("Задач нет 🙂");
       return;
     }
-    if (!confirm("Ты точно хочешь удалить ВСЕ задачи?")) return;
+    if (!confirm("Удалить все задачи?")) return;
 
     tasks = [];
     saveTasks(tasks);
     list.innerHTML = "";
   });
 
-  // ===== ДАТА БЕЗ ГОДА (ДД.ММ) =====
+  /* ===== НОРМАЛИЗАЦИЯ ДАТЫ (ИСПРАВЛЕНО) ===== */
   function normalizeDateNoYear(str) {
     const s = (str || "").trim();
     if (!s) return "";
@@ -159,22 +176,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const m = s.match(/^(\d{1,2})\.(\d{1,2})$/);
     if (!m) return "";
 
-    const day = m[1].padStart(2, "0");
-    const month = m[2].padStart(2, "0");
-
-    const d = Number(day);
-    const mo = Number(month);
-
+    const d = Number(m[1]);
+    const mo = Number(m[2]);
     if (d < 1 || d > 31 || mo < 1 || mo > 12) return "";
-    return `${day}.${month}`;
+
+    return String(d).padStart(2, "0") + "." + String(mo).padStart(2, "0");
   }
 
-  // ===== localStorage helpers =====
+  /* ===== localStorage ===== */
   function loadTasks() {
     try {
-      const raw = localStorage.getItem("tasks");
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
+      return JSON.parse(localStorage.getItem("tasks")) || [];
     } catch {
       return [];
     }
@@ -184,14 +196,11 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem("tasks", JSON.stringify(arr));
   }
 
-  // ===== защита =====
   function escapeHtml(str) {
     return String(str)
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/>/g, "&gt;");
   }
 
 });
