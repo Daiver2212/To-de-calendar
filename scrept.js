@@ -1,13 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
 
-  /* ===== ЧАСЫ ===== */
+  /* ================= ЧАСЫ ================= */
   startClock();
-
   function startClock() {
-    const months = [
-      "января","февраля","марта","апреля","мая","июня",
-      "июля","августа","сентября","октября","ноября","декабря"
-    ];
+    const months = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
     const weekdays = ["Вс","Пн","Вт","Ср","Чт","Пт","Сб"];
 
     const hhEl = document.querySelector(".HH");
@@ -18,183 +14,170 @@ document.addEventListener("DOMContentLoaded", () => {
       const now = new Date();
       if (hhEl) hhEl.textContent = String(now.getHours()).padStart(2, "0");
       if (mmEl) mmEl.textContent = String(now.getMinutes()).padStart(2, "0");
-      if (dateEl) {
-        dateEl.textContent =
-          `${weekdays[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
-      }
+      if (dateEl) dateEl.textContent = `${weekdays[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
       setTimeout(tick, 1000 - now.getMilliseconds());
     }
-
     tick();
   }
 
-  /* ===== РЕГИСТРАЦИЯ (localStorage) ===== */
-  const registerSection = document.getElementById("registerSection");
+  /* ================= FIREBASE ================= */
+  const firebaseConfig = {
+    apiKey: "AIzaSyCqhc22NWeYrbm8c461Bnio4-Nj6r1Zs58",
+    authDomain: "to-do-calendar-7a21d.firebaseapp.com",
+    projectId: "to-do-calendar-7a21d",
+    storageBucket: "to-do-calendar-7a21d.firebasestorage.app",
+    messagingSenderId: "334708917123",
+    appId: "1:334708917123:web:799c27d742ee4d5cd26cb6"
+  };
+
+  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db = firebase.firestore();
+
+  /* ================= UI ================= */
+  const registerSection = document.getElementById("registerSection"); // можно оставить, мы его спрячем
   const appSection = document.getElementById("appSection");
-  const regEmail = document.getElementById("regEmail");
-  const registerBtn = document.getElementById("registerBtn");
-  const registerStatus = document.getElementById("registerStatus");
 
-  if (localStorage.getItem("registeredEmail")) {
-    registerSection.classList.add("hidden");
-    appSection.classList.remove("hidden");
-  }
-
-  registerBtn.addEventListener("click", () => {
-    const email = (regEmail.value || "").trim();
-
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      registerStatus.textContent = "Введи корректный email";
-      return;
-    }
-
-    localStorage.setItem("registeredEmail", email);
-    registerStatus.textContent = "Готово ✅";
-    registerSection.classList.add("hidden");
-    appSection.classList.remove("hidden");
-  });
-
-  /* ===== TODO ===== */
-  const addBtn = document.querySelector(".add_task");
-  const list = document.querySelector(".task_list");
   const taskName = document.getElementById("taskName");
   const taskDate = document.getElementById("taskDate");
   const taskTime = document.getElementById("taskTime");
+  const addBtn = document.querySelector(".add_task");
+  const list = document.querySelector(".task_list");
   const clearBtn = document.getElementById("clearAllTasks");
 
-  /* ===== MODAL ===== */
-  const modal = document.getElementById("taskModal");
-  const modalName = document.getElementById("modalName");
-  const modalDate = document.getElementById("modalDate");
-  const modalTime = document.getElementById("modalTime");
-  const modalCloseBtn = document.getElementById("modalCloseBtn");
-
-  function openModal(task) {
-    modalName.textContent = task.name || "—";
-    modalDate.textContent = task.date || "—";
-    modalTime.textContent = task.time || "—";
-    modal.classList.remove("hidden");
-  }
-
-  function closeModal() {
-    modal.classList.add("hidden");
-  }
-
-  modalCloseBtn.addEventListener("click", closeModal);
-  modal.addEventListener("click", (e) => {
-    if (e.target && e.target.dataset && e.target.dataset.close === "1") closeModal();
-  });
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
-  });
-
-  /* ===== ЗАДАЧИ ИЗ ПАМЯТИ ===== */
-  let tasks = loadTasks();
-  renderAll();
-
-  /* ===== ВВОД ДАТЫ: ДДММ -> ДД.ММ (без двойных точек) ===== */
-  taskDate.addEventListener("input", () => {
+  // ввод даты: ДДММ -> ДД.ММ (без двойных точек)
+  taskDate?.addEventListener("input", () => {
     let digits = (taskDate.value || "").replace(/\D/g, "");
     if (digits.length > 4) digits = digits.slice(0, 4);
-
-    if (digits.length <= 2) {
-      taskDate.value = digits;
-    } else {
-      taskDate.value = digits.slice(0, 2) + "." + digits.slice(2);
-    }
+    taskDate.value = digits.length <= 2 ? digits : digits.slice(0, 2) + "." + digits.slice(2);
   });
 
-  /* ===== ДОБАВИТЬ ЗАДАЧУ ===== */
-  addBtn.addEventListener("click", () => {
+  /* ================= AUTH: Anonymous (авто-вход) ================= */
+  let uid = null;
+  let unsubscribe = null;
+
+  auth.onAuthStateChanged(async (user) => {
+    if (!user) {
+      try {
+        await auth.signInAnonymously();
+      } catch (e) {
+        console.error(e);
+        alert("Не удалось войти анонимно. Включи Anonymous в Firebase Auth.");
+      }
+      return;
+    }
+
+    uid = user.uid;
+
+    // скрываем регистрацию (если она есть) и показываем приложение
+    registerSection?.classList.add("hidden");
+    appSection?.classList.remove("hidden");
+
+    startRealtimeTasks(uid);
+  });
+
+  /* ================= FIRESTORE: tasks (у каждого свои) ================= */
+  function startRealtimeTasks(uid) {
+    if (unsubscribe) unsubscribe();
+
+    const tasksRef = db.collection("users").doc(uid).collection("tasks");
+
+    unsubscribe = tasksRef
+      .orderBy("createdAt", "asc")
+      .onSnapshot((snap) => {
+        list.innerHTML = "";
+        snap.forEach((doc) => list.appendChild(createTaskElement(tasksRef, doc.id, doc.data())));
+      }, (err) => {
+        console.error(err);
+        alert("Ошибка Firestore. Проверь Rules.");
+      });
+  }
+
+  addBtn?.addEventListener("click", async () => {
+    if (!uid) return;
+
     const name = (taskName.value || "").trim();
     if (!name) return;
 
-    const date = normalizeDateNoYear(taskDate.value);
+    // ⏰ время обязательно и первое
     const time = normalizeTime(taskTime.value);
+    const date = normalizeDateNoYear(taskDate.value);
 
-    // если дата введена, но неверная — ошибка
-    if (taskDate.value.trim() && !date) {
+    if (!time) {
+      alert("Укажи время (например 14:30)");
+      return;
+    }
+    if ((taskDate.value || "").trim() && !date) {
       alert("Неверная дата. Формат: ДД.ММ (например 12.03)");
       return;
     }
 
-    // если время введено, но неверное — ошибка
-    if (taskTime.value.trim() && !time) {
-      alert("Неверное время. Формат: ЧЧ:ММ (например 14:30)");
-      return;
+    const tasksRef = db.collection("users").doc(uid).collection("tasks");
+
+    try {
+      await tasksRef.add({
+        name,
+        time,
+        date: date || "",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      taskName.value = "";
+      taskTime.value = "";
+      taskDate.value = "";
+      taskName.focus();
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка сохранения задачи");
     }
-
-    const task = {
-      id: Date.now().toString(),
-      name,
-      date,
-      time
-    };
-
-    tasks.push(task);
-    saveTasks(tasks);
-
-    list.appendChild(createTask(task));
-
-    taskName.value = "";
-    taskDate.value = "";
-    taskTime.value = "";
-    taskName.focus();
   });
 
-  function createTask(task) {
+  function createTaskElement(tasksRef, docId, task) {
     const el = document.createElement("div");
     el.className = "task";
-    el.dataset.id = task.id;
 
-    const when = `${task.date} ${task.time}`.trim();
+    const when = `${task.time || ""} ${task.date || ""}`.trim();
 
     el.innerHTML = `
-      <div class="checkbox" data-checked="false"></div>
+      <div class="checkbox"></div>
       <div class="content">
-        <h2 class="task__name">${escapeHtml(task.name)}</h2>
-        <span class="condition inprocess">${escapeHtml(when)}</span>
+        <h2 class="task__name">${escapeHtml(task.name || "")}</h2>
+        <span class="condition inprocess">${escapeHtml(when || "—")}</span>
       </div>
     `;
 
-    // клик по задаче -> модалка
-    el.querySelector(".content").addEventListener("click", () => openModal(task));
-
-    // клик по кружочку -> удалить
-    const checkbox = el.querySelector(".checkbox");
-    checkbox.addEventListener("click", () => {
-      if (checkbox.dataset.checked === "true") return;
-      checkbox.dataset.checked = "true";
-      checkbox.textContent = "✓";
-
-      tasks = tasks.filter(t => t.id !== task.id);
-      saveTasks(tasks);
-
-      setTimeout(() => el.remove(), 350);
+    // удалить по клику на кружок
+    el.querySelector(".checkbox").addEventListener("click", async () => {
+      try {
+        await tasksRef.doc(docId).delete();
+        el.remove();
+      } catch (e) {
+        console.error(e);
+        alert("Ошибка удаления");
+      }
     });
 
     return el;
   }
 
-  function renderAll() {
-    list.innerHTML = "";
-    tasks.forEach(t => list.appendChild(createTask(t)));
-  }
+  clearBtn?.addEventListener("click", async () => {
+    if (!uid) return;
+    if (!confirm("Ты точно хочешь удалить ВСЕ задачи?")) return;
 
-  /* ===== УДАЛИТЬ ВСЕ ===== */
-  clearBtn.addEventListener("click", () => {
-    if (!tasks.length) {
-      alert("Задач нет 🙂");
-      return;
+    const tasksRef = db.collection("users").doc(uid).collection("tasks");
+
+    try {
+      const snap = await tasksRef.get();
+      const batch = db.batch();
+      snap.forEach((doc) => batch.delete(doc.ref));
+      await batch.commit();
+    } catch (e) {
+      console.error(e);
+      alert("Ошибка при удалении задач");
     }
-    if (!confirm("Удалить все задачи?")) return;
-
-    tasks = [];
-    saveTasks(tasks);
-    list.innerHTML = "";
   });
 
-  /* ===== ОГРАНИЧЕНИЕ ДАТЫ (учёт дней в месяце) ===== */
+  /* ================= VALIDATION ================= */
   function normalizeDateNoYear(str) {
     const digits = (str || "").replace(/\D/g, "");
     if (digits.length < 4) return "";
@@ -202,59 +185,40 @@ document.addEventListener("DOMContentLoaded", () => {
     const day = Number(digits.slice(0, 2));
     const month = Number(digits.slice(2, 4));
 
-    if (!Number.isFinite(day) || !Number.isFinite(month)) return "";
     if (month < 1 || month > 12) return "";
     if (day < 1) return "";
 
-    // сколько дней в месяце (учёт високосного года)
     const year = new Date().getFullYear();
-    const daysInMonth = new Date(year, month, 0).getDate(); // month: 1..12
-    if (day > daysInMonth) return "";
+    const max = new Date(year, month, 0).getDate();
+    if (day > max) return "";
 
-    return String(day).padStart(2, "0") + "." + String(month).padStart(2, "0");
+    return `${String(day).padStart(2, "0")}.${String(month).padStart(2, "0")}`;
   }
 
-  /* ===== ОГРАНИЧЕНИЕ ВРЕМЕНИ (00:00 - 23:59) ===== */
   function normalizeTime(str) {
     const s = (str || "").trim();
     if (!s) return "";
 
-    const m = s.match(/^(\d{2}):(\d{2})$/);
-    if (!m) return "";
+    // принимает HH:MM или HH:MM:SS
+    const parts = s.split(":");
+    if (parts.length < 2) return "";
 
-    const hh = Number(m[1]);
-    const mm = Number(m[2]);
+    const hh = Number(parts[0]);
+    const mm = Number(parts[1]);
 
-    if (!Number.isFinite(hh) || !Number.isFinite(mm)) return "";
     if (hh < 0 || hh > 23) return "";
     if (mm < 0 || mm > 59) return "";
 
     return `${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
   }
 
-  /* ===== localStorage ===== */
-  function loadTasks() {
-    try {
-      const raw = localStorage.getItem("tasks");
-      const arr = raw ? JSON.parse(raw) : [];
-      return Array.isArray(arr) ? arr : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function saveTasks(arr) {
-    localStorage.setItem("tasks", JSON.stringify(arr));
-  }
-
-  /* ===== защита ===== */
   function escapeHtml(str) {
     return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+      .replace(/&/g,"&amp;")
+      .replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;")
+      .replace(/"/g,"&quot;")
+      .replace(/'/g,"&#039;");
   }
 
 });
